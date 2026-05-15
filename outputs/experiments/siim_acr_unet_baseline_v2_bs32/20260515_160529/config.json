@@ -1,0 +1,22 @@
+{
+  "processed_root": "data/processed/siim_acr_pneumothorax",
+  "split_root": "data/splits/siim_acr_pneumothorax",
+  "output_root": "outputs/experiments/siim_acr_unet_baseline_v2_bs32",
+  "image_size": 512,
+  "in_channels": 1,
+  "base_channels": 32,
+  "epochs": 60,
+  "batch_size": 32,
+  "num_workers": 8,
+  "lr": 0.0005,
+  "weight_decay": 0.0001,
+  "bce_weight": 0.5,
+  "dice_weight": 0.5,
+  "threshold": 0.5,
+  "seed": 42,
+  "device": "cuda",
+  "amp": true,
+  "balanced_sampling": true,
+  "positive_sample_ratio": 0.5,
+  "pos_weight": 5.0
+}

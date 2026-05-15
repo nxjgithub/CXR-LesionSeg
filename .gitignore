@@ -1,0 +1,66 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Packaging/build artifacts
+build/
+dist/
+*.egg-info/
+
+# IDE/editor local files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local agent instructions
+AGENTS.md
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Data artifacts
+data/raw/
+data/processed/
+*.zip
+*.tar
+*.tar.gz
+*.7z
+*.dcm
+
+# Keep dataset split definitions versionable.
+!data/splits/
+!data/splits/**
+
+# Training artifacts
+outputs/visualizations/
+outputs/experiments/**/checkpoints/
+outputs/**/*.pth
+outputs/**/*.pt
+outputs/**/*.ckpt
+
+# Logs and temporary runtime files
+*.log
+tmp/
+temp/
