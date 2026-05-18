@@ -22,12 +22,22 @@
 - BCE + Dice 分割损失。
 - Dice、IoU、precision、recall、specificity 等指标。
 - U-Net baseline 训练脚本。
-- 两组 baseline 实验记录和报告。
+- 三组 U-Net baseline 实验记录和报告。
+- 针对 v2 best checkpoint 的验证集阈值扫描和可视化错误分析。
 
 已有实验报告位于：
 
 - `outputs/experiments/siim_acr_unet_baseline/EXPERIMENT_REPORT.md`
 - `outputs/experiments/siim_acr_unet_baseline_v2_bs32/EXPERIMENT_REPORT.md`
+- `outputs/experiments/siim_acr_unet_baseline_v3/EXPERIMENT_REPORT.md`
+
+当前 SIIM-ACR U-Net baseline 结果概览：
+
+| 实验 | 主要设置 | 最佳 val Dice | 观察 |
+| --- | --- | ---: | --- |
+| `siim_acr_unet_baseline` | 原始 U-Net baseline | 0.3632 | 可作为基础对照，但前景学习和 recall 偏弱。 |
+| `siim_acr_unet_baseline_v2_bs32` | balanced sampling、`pos_weight=5.0`、BCE/Dice=0.5/0.5 | 0.4250 | 类别不均衡处理明显提升验证 Dice，但训练/验证差距较大；阈值扫描显示 threshold 只能带来很小提升，负样本误检仍明显。 |
+| `siim_acr_unet_baseline_v3` | 降低正样本采样比例、`pos_weight=2.0`、BCE/Dice=0.3/0.7 | 0.4289 | 训练过程相比 v2 更稳定，过拟合有所缓解，但验证 Dice 提升有限，普通 U-Net 瓶颈仍未明显突破。 |
 
 ## 项目结构
 
@@ -101,6 +111,7 @@ python scripts/train/train_siim_unet.py --device cuda --amp
 
 - 扩展更多胸片病灶数据集。
 - 增加 UNet++、DeepLabV3+、Attention U-Net、Swin-Unet 等模型。
-- 增加数据增强、类别不均衡处理、阈值扫描和独立 test 集评估流程。
+- 增加数据增强、阈值扫描、负样本误检分析和独立 test 集评估流程。
+- 尝试图像级分类辅助分支，增强模型对正常/异常胸片的整体判别能力。
 - 统一配置管理和实验汇总脚本。
 - 建立多模型、多数据集、多指标的对比实验表。
