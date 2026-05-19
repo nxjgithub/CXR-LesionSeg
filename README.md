@@ -24,20 +24,23 @@
 - U-Net baseline 训练脚本。
 - 三组 U-Net baseline 实验记录和报告。
 - 针对 v2 best checkpoint 的验证集阈值扫描和可视化错误分析。
+- 一组 U-Net + classification head 辅助分类实验记录。
 
 已有实验报告位于：
 
 - `outputs/experiments/siim_acr_unet_baseline/EXPERIMENT_REPORT.md`
 - `outputs/experiments/siim_acr_unet_baseline_v2_bs32/EXPERIMENT_REPORT.md`
 - `outputs/experiments/siim_acr_unet_baseline_v3/EXPERIMENT_REPORT.md`
+- `outputs/experiments/siim_acr_unet_cls_v2/EXPERIMENT_REPORT.md`
 
-当前 SIIM-ACR U-Net baseline 结果概览：
+当前 SIIM-ACR U-Net 系列实验结果概览：
 
 | 实验 | 主要设置 | 最佳 val Dice | 观察 |
 | --- | --- | ---: | --- |
 | `siim_acr_unet_baseline` | 原始 U-Net baseline | 0.3632 | 可作为基础对照，但前景学习和 recall 偏弱。 |
 | `siim_acr_unet_baseline_v2_bs32` | balanced sampling、`pos_weight=5.0`、BCE/Dice=0.5/0.5 | 0.4250 | 类别不均衡处理明显提升验证 Dice，但训练/验证差距较大；阈值扫描显示 threshold 只能带来很小提升，负样本误检仍明显。 |
 | `siim_acr_unet_baseline_v3` | 降低正样本采样比例、`pos_weight=2.0`、BCE/Dice=0.3/0.7 | 0.4289 | 训练过程相比 v2 更稳定，过拟合有所缓解，但验证 Dice 提升有限，普通 U-Net 瓶颈仍未明显突破。 |
+| `siim_acr_unet_cls_v2` | U-Net + classification head，cls gate | 0.4120 | 分类门控在部分 epoch 能提高 gated Dice，但整体低于 v3 baseline，简单分类辅助头未能稳定提升分割性能。 |
 
 ## 项目结构
 

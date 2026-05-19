@@ -72,6 +72,7 @@ outputs/experiments/**/checkpoints/
 outputs/**/*.pth
 outputs/**/*.pt
 outputs/**/*.ckpt
+outputs/experiments/siim_acr_unet_baseline_v2_bs32/20260515_160529/visualizations
 
 # Logs and temporary runtime files
 *.log
