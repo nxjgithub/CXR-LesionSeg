@@ -25,6 +25,8 @@
 - 三组 U-Net baseline 实验记录和报告。
 - 针对 v2 best checkpoint 的验证集阈值扫描和可视化错误分析。
 - 一组 U-Net + classification head 辅助分类实验记录。
+- 基于 `segmentation_models_pytorch` 的 Unet++-ResNet34 实验记录。
+- 面向 SMP 模型的 threshold sweep、postprocess sweep 和验证集预测可视化工具。
 
 已有实验报告位于：
 
@@ -32,6 +34,7 @@
 - `outputs/experiments/siim_acr_unet_baseline_v2_bs32/EXPERIMENT_REPORT.md`
 - `outputs/experiments/siim_acr_unet_baseline_v3/EXPERIMENT_REPORT.md`
 - `outputs/experiments/siim_acr_unet_cls_v2/EXPERIMENT_REPORT.md`
+- `outputs/experiments/siim_acr_unetpp_resnet34_v1/20260518_180917/EXPERIMENT_REPORT.md`
 
 当前 SIIM-ACR U-Net 系列实验结果概览：
 
@@ -41,6 +44,7 @@
 | `siim_acr_unet_baseline_v2_bs32` | balanced sampling、`pos_weight=5.0`、BCE/Dice=0.5/0.5 | 0.4250 | 类别不均衡处理明显提升验证 Dice，但训练/验证差距较大；阈值扫描显示 threshold 只能带来很小提升，负样本误检仍明显。 |
 | `siim_acr_unet_baseline_v3` | 降低正样本采样比例、`pos_weight=2.0`、BCE/Dice=0.3/0.7 | 0.4289 | 训练过程相比 v2 更稳定，过拟合有所缓解，但验证 Dice 提升有限，普通 U-Net 瓶颈仍未明显突破。 |
 | `siim_acr_unet_cls_v2` | U-Net + classification head，cls gate | 0.4120 | 分类门控在部分 epoch 能提高 gated Dice，但整体低于 v3 baseline，简单分类辅助头未能稳定提升分割性能。 |
+| `siim_acr_unetpp_resnet34_v1` | Unet++-ResNet34，ImageNet encoder，balanced sampling、`pos_weight=2.0`、BCE/Dice=0.3/0.7 | 0.5146 | SMP Unet++ 明显高于 U-Net baseline；threshold sweep 最佳 Dice 为 0.5198。训练后期过拟合，后处理可降低阴性假阳性，但会牺牲部分阳性 Dice。 |
 
 ## 项目结构
 
@@ -99,6 +103,36 @@ python scripts/preprocess/check_siim_dataloader.py
 python scripts/train/train_siim_unet.py --device cuda --amp
 ```
 
+训练 SIIM-ACR SMP 模型，例如 Unet++-ResNet34：
+
+```powershell
+python scripts/train/train_siim_smp.py --output-root outputs/experiments/siim_acr_unetpp_resnet34_v1 --model-name unetplusplus --encoder-name resnet34 --encoder-weights imagenet --image-size 512 --batch-size 32 --epochs 50 --lr 0.0003 --weight-decay 0.0003 --bce-weight 0.3 --dice-weight 0.7 --pos-weight 2.0 --balanced-sampling --positive-sample-ratio 0.35 --device cuda --amp
+```
+
+对 SMP best checkpoint 进行阈值扫描：
+
+```powershell
+python scripts/evaluate/threshold_sweep_siim_smp.py --config outputs/experiments/siim_acr_unetpp_resnet34_v1/20260518_180917/config.json --checkpoint outputs/experiments/siim_acr_unetpp_resnet34_v1/20260518_180917/checkpoints/best_model.pth --split val --output-csv outputs/experiments/siim_acr_unetpp_resnet34_v1/20260518_180917/logs/threshold_sweep_val.csv --device cuda
+```
+
+搜索 SMP 后处理参数组合：
+
+```powershell
+python scripts/evaluate/postprocess_sweep_siim_smp.py --config outputs/experiments/siim_acr_unetpp_resnet34_v1/20260518_180917/config.json --checkpoint outputs/experiments/siim_acr_unetpp_resnet34_v1/20260518_180917/checkpoints/best_model.pth --split val --output-csv outputs/experiments/siim_acr_unetpp_resnet34_v1/20260518_180917/logs/postprocess_sweep_val.csv --device cuda
+```
+
+可视化 SMP 验证集预测并生成定性分析统计：
+
+```powershell
+python scripts/evaluate/visualize_siim_predictions_smp.py --checkpoint outputs/experiments/siim_acr_unetpp_resnet34_v1/20260518_180917/checkpoints/best_model.pth --split val --threshold 0.04 --output-dir outputs/experiments/siim_acr_unetpp_resnet34_v1/20260518_180917/visualizations/val_predictions_thr0p04 --device cuda --amp
+```
+
+使用后处理参数可视化 SMP 验证集预测：
+
+```powershell
+python scripts/evaluate/visualize_siim_predictions_smp_postprocess.py --checkpoint outputs/experiments/siim_acr_unetpp_resnet34_v1/20260518_180917/checkpoints/best_model.pth --split val --threshold 0.08 --min-component-area 150 --output-dir outputs/experiments/siim_acr_unetpp_resnet34_v1/20260518_180917/visualizations/val_predictions_thr0p08_area150 --device cuda --amp
+```
+
 ## 实验管理
 
 实验输出默认保存在 `outputs/experiments/`。每次训练会生成独立运行目录，并保存：
@@ -108,7 +142,7 @@ python scripts/train/train_siim_unet.py --device cuda --amp
 - `checkpoints/best_model.pth`
 - `checkpoints/last_model.pth`
 
-其中模型权重和大体积数据不纳入版本管理。推荐保留轻量的配置、指标日志和实验报告，用于追踪实验过程。
+其中模型权重和大体积数据不纳入版本管理。`outputs/experiments/**/visualizations/` 下的预测可视化图片也默认忽略；推荐保留轻量的配置、指标日志、阈值/后处理搜索 CSV 和实验报告，用于追踪实验过程。
 
 ## 后续计划
 

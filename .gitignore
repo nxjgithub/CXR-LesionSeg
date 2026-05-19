@@ -68,6 +68,7 @@ data/processed/
 
 # Training artifacts
 outputs/visualizations/
+outputs/experiments/**/visualizations/
 outputs/experiments/**/checkpoints/
 outputs/**/*.pth
 outputs/**/*.pt
