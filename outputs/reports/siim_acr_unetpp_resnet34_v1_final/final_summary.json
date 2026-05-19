@@ -1,0 +1,14 @@
+{
+  "num_images": 2135,
+  "num_positive": 476,
+  "num_negative": 1659,
+  "num_false_positive_negative": 231,
+  "num_true_negative": 1428,
+  "negative_fp_rate": 0.13924050632911392,
+  "mean_dice_all": 0.757590579554129,
+  "mean_dice_positive": 0.3980165699618936,
+  "mean_dice_negative": 0.8607594936987368,
+  "mean_iou_positive": 0.30382547276630467,
+  "mean_pred_area_positive": 2256.5,
+  "mean_pred_area_negative": 149.09825195901146
+}
