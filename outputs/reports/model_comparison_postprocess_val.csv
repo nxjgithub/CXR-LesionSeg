@@ -1,0 +1,3 @@
+run_dir,model_name,encoder_name,threshold,min_component_area,keep_largest_component,mean_dice_positive,mean_iou_positive,negative_fp_rate,mean_dice_all,mean_dice_negative,num_false_positive_negative
+outputs/experiments/siim_acr_deeplabv3plus_resnet34_v1/20260519_115843,deeplabv3plus,resnet34,0.03,0,0,0.44498231208399,0.337163484617284,0.3447860156720916,0.4434714709352791,0.4430379806478853,572
+/data/share/CXR-LesionSeg/outputs/experiments/siim_acr_smp_unet_resnet34_v1/20260519_141839,unet,resnet34,0.03,0,0,0.4257617858562211,0.3232564119303852,0.2061482820976491,0.674315040680513,0.7456298986047823,342

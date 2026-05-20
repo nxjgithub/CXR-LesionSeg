@@ -1,0 +1,3 @@
+model,setting,threshold,min_component_area,min_pred_area,tta,num_models,mean_dice_positive,mean_iou_positive,negative_fp_rate,positive_image_recall,num_false_positive_negative,num_false_negative_positive,mean_dice_negative,mean_dice_all
+Ensemble U-Net++ R34+R50,main,0.25,500,0,hflip,2,0.4365446498519194,0.3406599955830859,0.12176009644364075,0.7289915966386554,202,129,0.8782399035685977,0.7797635847071743
+Ensemble U-Net++ R34+R50,low_fp,0.3,200,0,hflip,2,0.4239408827133328,0.3292488512223662,0.11754068716094032,0.7415966386554622,195,123,0.882459312858705,0.7802322530230156
