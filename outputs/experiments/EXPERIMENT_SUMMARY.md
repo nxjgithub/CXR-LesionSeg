@@ -28,6 +28,8 @@
 | `siim_acr_unetpp_resnet34_recall_v2` | Unet++-ResNet34 recall-oriented | 提高正样本召回探索 |
 | `siim_acr_unetpp_resnet50_recall_v1` | Unet++-ResNet50 recall-oriented | 更强 encoder + recall 探索 |
 | `ensemble_unetpp_r34_r50_recall_v1` | Unet++ ResNet34 + ResNet50 ensemble | 当前验证集最佳候选 |
+| `ensemble_unetpp_r34_r50_deeplab_r34_v1` | 3 模型 ensemble：R34 + R50 + DeepLabV3+ R34 | 低误报融合候选 |
+| `ensemble_unetpp_r34_r50_deeplab_unet_v1` | 4 模型 ensemble：R34 + R50 + DeepLabV3+ R34 + SMP U-Net R34 | 更低误报融合候选 |
 
 ## 3. 实验演进脉络
 
@@ -138,7 +140,19 @@ Recall-oriented 实验提高正样本采样比例和 BCE 正类权重，目标�
 | U-Net++ ResNet34 baseline | 0.3980 | 13.92% | 0.7576 | 231 / 1659 |
 | Ensemble R34+R50 main | 0.4365 | 12.18% | 0.7798 | 202 / 1659 |
 
-结果表明，多模型融合能够在一定程度上缓解单模型在病灶召回和正常片误检之间的折中问题。当前 ensemble main 配置是验证集上的最佳候选方案。
+随后继续评估了 3 模型与 4 模型融合方案：
+
+| 融合方案与配置 | Positive Dice | Negative FP rate | Positive recall | Mean Dice all | False positive negative |
+|---|---:|---:|---:|---:|---:|
+| 2 模型 R34+R50：thr=0.25, area=500 | 0.4365 | 12.18% | 72.90% | 0.7798 | 202 / 1659 |
+| 3 模型 + DeepLabV3+ R34：thr=0.30, area=500 | 0.4301 | 9.89% | 70.38% | 0.7961 | 164 / 1659 |
+| 4 模型 + SMP U-Net R34：thr=0.30, area=500 | 0.4255 | 7.78% | 69.12% | 0.8115 | 129 / 1659 |
+
+3 模型和 4 模型主可视化配置持续降低阴性误报，并提高 mean Dice all，但会牺牲一部分 positive-only Dice 和阳性图像召回。因此，当前结论不是简单替换 2 模型融合，而是形成两类候选：
+
+1. 若更重视正样本 Dice 与误报平衡，2 模型 R34+R50 仍是主候选。
+2. 若更重视低误报，3 模型和 4 模型主可视化配置更有价值。
+3. 4 模型还有一个更均衡的验证集候选：`threshold=0.25, min_component_area=300`，positive Dice 为 0.4759，negative FP rate 为 12.12%，但该配置尚未生成同等可视化复查。
 
 ## 4. 当前模型选择结论
 
@@ -181,6 +195,23 @@ outputs/experiments/ensemble_unetpp_r34_r50_recall_v1
 
 推荐理由：相比单模型 baseline，ensemble 同时提升 positive-only Dice、降低阴性误报率并提高 mean Dice all。
 
+当前低误报候选方案：
+
+```text
+outputs/experiments/ensemble_unetpp_r34_r50_deeplab_unet_v1
+```
+
+推荐低误报配置：
+
+| 参数 | 数值 |
+|---|---:|
+| Threshold | 0.30 |
+| Min component area | 500 |
+| Min pred area | 0 |
+| TTA | hflip |
+
+推荐理由：4 模型融合主可视化配置将 negative FP rate 降至 7.78%，false positive negative 降至 129 / 1659，适合作为低误报场景候选。但其 positive-only Dice 为 0.4255，低于 2 模型融合主配置的 0.4365。
+
 ### 4.2 暂不采用的实验
 
 | 实验 | 不采用原因 |
@@ -198,6 +229,8 @@ outputs/experiments/ensemble_unetpp_r34_r50_recall_v1
 | `siim_acr_smp_unet_resnet34_v1` | 说明普通 U-Net decoder 在 SMP 框架下可作架构对照 |
 | `siim_acr_unetpp_resnet50_recall_v1` | 说明更强 encoder 有正样本潜力，但需要更好的误报控制机制 |
 | `ensemble_unetpp_r34_r50_recall_v1` | 说明多模型融合可以改善单模型召回/误报折中 |
+| `ensemble_unetpp_r34_r50_deeplab_r34_v1` | 说明加入 DeepLabV3+ 后可以降低误报，但主可视化配置略降 positive Dice |
+| `ensemble_unetpp_r34_r50_deeplab_unet_v1` | 说明 4 模型融合可进一步降低误报，并提供一个高 positive Dice 的平衡候选 |
 
 ## 5. 当前主要问题
 
@@ -226,16 +259,19 @@ outputs/experiments/ensemble_unetpp_r34_r50_recall_v1
 
 ## 6. 后续实验建议
 
-1. 以 `siim_acr_unetpp_resnet34_v1` 作为单模型主线 baseline，以 `ensemble_unetpp_r34_r50_recall_v1` 作为验证集最佳候选。
+1. 以 `siim_acr_unetpp_resnet34_v1` 作为单模型主线 baseline，以 `ensemble_unetpp_r34_r50_recall_v1` 作为正样本 Dice 与误报平衡的验证集主候选。
 2. 固定报告指标：训练期最佳全局 Dice、threshold sweep 最佳 Dice、positive-only Dice、negative FP rate、mean Dice all。
 3. 对低 Dice 阳性样本和高误报阴性样本做系统可视化复查，判断错误来源是小病灶、边界模糊、肺尖/胸膜线误判，还是标注质量问题。
 4. 尝试 Focal Loss、Tversky Loss、Focal Tversky Loss 或 Dice/Tversky 混合损失，重点改善小病灶和类别极不均衡问题。
 5. 加强胸片灰度、对比度、局部遮挡、尺度变化和轻微几何扰动相关的数据增强。
 6. 若继续探索 ResNet50，应引入更强的误报抑制机制，而不是只依赖更低阈值。
-7. 若进入独立 test 集评估，应固定 ensemble main 配置，避免将 test 集结果用于再次调参。
+7. 对 3 模型和 4 模型融合保留两类配置：低误报主可视化配置，以及 `negative_fp_rate <= 13%` 约束下的 balanced candidate。
+8. 若进入独立 test 集评估，应先固定候选配置，避免将 test 集结果用于再次调参。
 
 ## 7. 当前阶段结论
 
 当前 SIIM-ACR 气胸分割实验已经完成从普通 U-Net baseline 到 SMP 系列模型、classification gate 和 recall-oriented 配置的多轮探索。
 
-综合验证集结果，`Unet++-ResNet34` 仍是当前最合适的单模型 baseline；`U-Net++ ResNet34 + ResNet50 ensemble` 是当前验证集上的最佳候选方案。ensemble 不是简单追求单项最高 positive-only Dice，而是在提升正样本 Dice 的同时降低了阴性误报率。后续应固定该配置进入更严格的独立 test 集评估。
+综合验证集结果，`Unet++-ResNet34` 仍是当前最合适的单模型 baseline；`U-Net++ ResNet34 + ResNet50 ensemble` 是当前正样本 Dice 与误报平衡最清晰的候选方案。3 模型和 4 模型融合进一步证明加入横向架构可以降低阴性误报，其中 4 模型主可视化配置把 negative FP rate 降至 7.78%，但 positive-only Dice 和阳性图像召回略有下降。
+
+后续应根据评估目标固定候选：若优先平衡正样本分割与误报，使用 2 模型融合主配置；若优先低误报，使用 4 模型融合主可视化配置；若希望继续提高 positive-only Dice，可复查 4 模型 `threshold=0.25, min_component_area=300` 的 balanced candidate。所有这些结论仍只来自验证集。

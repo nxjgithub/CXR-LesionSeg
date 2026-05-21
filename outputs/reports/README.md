@@ -9,7 +9,7 @@
 | 文件或目录 | 说明 |
 |---|---|
 | `siim_acr_unetpp_resnet34_v1_final/` | 单模型 U-Net++ ResNet34 baseline 的最终整理结果 |
-| `final_ensemble_results.csv` | U-Net++ ResNet34 + ResNet50 ensemble 的最终验证集结果 |
+| `final_ensemble_results.csv` | 2/3/4 模型 ensemble 的验证集候选结果 |
 | `model_comparison_postprocess_val.csv` | 部分单模型后处理对比结果 |
 
 本文仅基于验证集结果总结当前阶段模型选择。尚未进行独立 test 集最终评估。
@@ -48,9 +48,9 @@ outputs/reports/siim_acr_unetpp_resnet34_v1_final
 
 该模型在正样本 Dice 与阴性误报率之间表现较为均衡，是后续模型融合前的主要 baseline。
 
-## 3. Ensemble 最终结果
+## 3. Ensemble 结果归档
 
-融合实验目录：
+2 模型融合实验目录：
 
 ```text
 outputs/experiments/ensemble_unetpp_r34_r50_recall_v1
@@ -99,13 +99,62 @@ outputs/experiments/ensemble_unetpp_r34_r50_recall_v1
 | False positive negative | 195 / 1659 |
 | Positive image recall | 74.16% |
 
+新增 3 模型融合实验目录：
+
+```text
+outputs/experiments/ensemble_unetpp_r34_r50_deeplab_r34_v1
+```
+
+融合模型在 2 模型基础上加入 DeepLabV3+ ResNet34。当前主可视化配置来自 `visual_main` 行：
+
+| 指标 | 数值 |
+|---|---:|
+| Threshold | 0.30 |
+| Min component area | 500 |
+| Mean Dice all | 0.7961 |
+| Mean Dice positive | 0.4301 |
+| Mean IoU positive | 0.3380 |
+| Mean Dice negative | 0.9011 |
+| Negative FP rate | 9.89% |
+| False positive negative | 164 / 1659 |
+| Positive image recall | 70.38% |
+| False negative positive | 141 / 476 |
+
+同一实验的 `balanced_candidate` 行为 `threshold=0.30, min_component_area=300`，positive Dice 为 0.4595，negative FP rate 为 12.48%。该配置更偏召回，但尚需结合可视化复查。
+
+新增 4 模型融合实验目录：
+
+```text
+outputs/experiments/ensemble_unetpp_r34_r50_deeplab_unet_v1
+```
+
+融合模型在 3 模型基础上加入 SMP U-Net ResNet34。当前主可视化配置来自 `visual_main` 行：
+
+| 指标 | 数值 |
+|---|---:|
+| Threshold | 0.30 |
+| Min component area | 500 |
+| Mean Dice all | 0.8115 |
+| Mean Dice positive | 0.4255 |
+| Mean IoU positive | 0.3346 |
+| Mean Dice negative | 0.9222 |
+| Negative FP rate | 7.78% |
+| False positive negative | 129 / 1659 |
+| Positive image recall | 69.12% |
+| False negative positive | 147 / 476 |
+
+同一实验的 `balanced_candidate` 行为 `threshold=0.25, min_component_area=300`，positive Dice 为 0.4759，negative FP rate 为 12.12%。该配置是当前 CSV 中正样本 Dice 较高且误报仍接近 2 模型主配置的候选，但尚需补充同等可视化复查。
+
 ## 4. 与单模型 baseline 对比
 
 | 模型与配置 | Positive Dice | Negative FP rate | Mean Dice all | False positive negative |
 |---|---:|---:|---:|---:|
 | U-Net++ ResNet34 baseline | 0.3980 | 13.92% | 0.7576 | 231 / 1659 |
-| Ensemble main | 0.4365 | 12.18% | 0.7798 | 202 / 1659 |
-| Ensemble low-FP | 0.4239 | 11.75% | 0.7802 | 195 / 1659 |
+| 2-model Ensemble main | 0.4365 | 12.18% | 0.7798 | 202 / 1659 |
+| 2-model Ensemble low-FP | 0.4239 | 11.75% | 0.7802 | 195 / 1659 |
+| 3-model Ensemble visual main | 0.4301 | 9.89% | 0.7961 | 164 / 1659 |
+| 4-model Ensemble visual main | 0.4255 | 7.78% | 0.8115 | 129 / 1659 |
+| 4-model Ensemble balanced candidate | 0.4759 | 12.12% | 0.7890 | 201 / 1659 |
 
 Ensemble main 相比单模型 baseline：
 
@@ -116,11 +165,11 @@ Ensemble main 相比单模型 baseline：
 | Mean Dice all | +0.0222 |
 | False positive negative | -29 |
 
-该结果说明，多模型融合结合水平翻转 TTA 与连通域面积过滤后，可以同时改善正样本分割和阴性误报控制。
+该结果说明，多模型融合结合水平翻转 TTA 与连通域面积过滤后，可以在不同配置下形成两类候选：2 模型主配置更均衡；3/4 模型主可视化配置更偏低误报。
 
 ## 5. 当前推荐
 
-当前验证集上的推荐候选方案为：
+当前验证集上正样本 Dice 与误报平衡较清晰的候选方案为：
 
 ```text
 Ensemble U-Net++ ResNet34 + ResNet50
@@ -137,4 +186,14 @@ tta=hflip
 3. mean Dice all 从 0.7576 提升至 0.7798。
 4. 该配置比单纯追求最高 positive-only Dice 的低阈值配置更可控。
 
-后续若进行独立 test 集评估，应固定当前主配置，不应再根据 test 集调整阈值或后处理参数。
+当前验证集上低误报候选方案为：
+
+```text
+Ensemble U-Net++ ResNet34 + ResNet50 + DeepLabV3+ ResNet34 + SMP U-Net ResNet34
+threshold=0.30
+min_component_area=500
+min_pred_area=0
+tta=hflip
+```
+
+该配置把 negative FP rate 降至 7.78%，但 positive-only Dice 为 0.4255，低于 2 模型主配置。后续若进行独立 test 集评估，应先固定候选配置，不应再根据 test 集调整阈值或后处理参数。
