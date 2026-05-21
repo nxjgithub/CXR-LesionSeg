@@ -93,3 +93,17 @@
 该实验可以作为 SIIM-ACR 气胸分割的基础 U-Net baseline。模型已经能学习到一定的气胸区域定位能力，但验证 Dice 和 IoU 偏低，尤其 recall 不足。考虑到数据存在明显阳性/阴性不均衡，后续应优先尝试阳性采样、前景像素加权、阈值调优和更强的数据增强策略。
 
 本报告只基于验证集日志生成，尚未包含独立 test 集评估。
+
+## 图表解读
+
+训练 loss 曲线用于观察收敛速度和验证集 loss 是否后期回升。
+
+![training loss clear](20260515_152651/report_assets/training_loss_clear.png)
+
+Dice/IoU 曲线已统一为百分比，便于观察训练集与验证集之间的泛化差距。
+
+![training dice iou percent](20260515_152651/report_assets/training_dice_iou_percent.png)
+
+Precision/Recall 曲线用于判断模型是偏保守还是偏召回。
+
+![training precision recall percent](20260515_152651/report_assets/training_precision_recall_percent.png)

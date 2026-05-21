@@ -210,3 +210,27 @@ checkpoints/last_model.pth
 4. 若继续探索分类辅助任务，建议降低 `cls_weight` 或采用 warm-up 后再加入分类 loss，避免分类任务过早主导共享表征。
 5. 不应只按 gated Dice 选模型；后续可同时保存最佳 raw checkpoint 和最佳 gated checkpoint，方便比较 gate 本身的净收益。
 6. 在没有完成 threshold sweep、gate threshold sweep 和验证集错误分析前，不建议进入独立 test 集评估。
+
+## 图表解读
+
+分类 gate 实验的日志字段不同于普通分割模型，训练曲线需要区分 raw segmentation、gated segmentation 和图像级分类分支。下列图表均基于 `logs/metrics.csv` 的实际字段绘制，未使用普通分割实验的通用 Dice/Precision 模板。
+
+训练 loss 曲线显示模型在前期快速收敛，随后训练 loss 继续下降而验证 loss 回升。该趋势与表格中的过拟合判断一致：训练集 gated Dice 后期持续升高，但验证集 gated Dice 没有同步改善。
+
+![training loss clear](report_assets/training_loss_clear.png)
+
+raw 与 gated Dice 曲线用于直接观察 classification gate 是否真的带来分割收益。验证集 raw Dice 的最高点出现在第 14 轮，而 gated Dice 的最高点出现在第 20 轮；两者峰值接近，但 gated 最佳值没有超过普通 Unet++-ResNet34 的主结果。
+
+![cls gate raw vs gated dice](report_assets/cls_gate_raw_vs_gated_dice.png)
+
+gate 净收益曲线展示 `val_gated_dice - val_raw_dice`。正值表示 gate 改善了当前 epoch 的 Dice，负值表示 gate 反而伤害了分割结果。可以看到 gate 在早期有明显收益，但在最佳 raw epoch 和训练后期均出现负收益，说明固定 `cls_threshold=0.50` 的策略并不稳定。
+
+![cls gate gate delta](report_assets/cls_gate_gate_delta.png)
+
+gated segmentation 指标曲线用于判断 gate 后的分割输出偏向 precision 还是 recall。后期 precision 上升而 recall 下降，说明 gate 更偏保守，主要风险是阳性样本漏检，而不是阴性误检。
+
+![cls gate gated segmentation metrics](report_assets/cls_gate_gated_segmentation_metrics.png)
+
+分类分支指标曲线显示训练集分类指标很快接近满分，但验证集 accuracy、recall 和 specificity 没有继续同步提升。这解释了为什么 gate 在训练后期没有稳定收益：分类分支本身也存在泛化瓶颈，固定阈值会把分类错误直接传导到分割 mask。
+
+![cls gate classification metrics](report_assets/cls_gate_classification_metrics.png)

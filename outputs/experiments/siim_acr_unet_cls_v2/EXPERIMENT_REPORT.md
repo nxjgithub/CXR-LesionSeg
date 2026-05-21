@@ -182,3 +182,27 @@ U-Net + classification head 未能稳定提升验证集 Dice。虽然分类门�
 - 在验证集错误分析完成前，不建议基于该实验进入独立 test 集评估。
 
 本报告只基于训练和验证日志生成，尚未包含独立 test 集评估。
+
+## 图表解读
+
+分类头实验同时记录 raw segmentation、gated segmentation 和图像级分类分支，因此图表需要按这些字段分别解读。下列曲线均来自 `20260518_163818/logs/metrics.csv`，不再使用普通 U-Net 分割实验的通用验证 Dice/Precision 模板。
+
+训练 loss 曲线用于观察多任务训练的收敛过程。训练 loss 持续下降，但验证 loss 后期没有同步改善，说明继续训练主要提升训练集拟合程度，并未稳定带来验证集收益。
+
+![training loss clear](20260518_163818/report_assets/training_loss_clear.png)
+
+raw 与 gated segmentation 曲线用于比较分类 gate 前后的验证集表现。第 19 轮 gated Dice 达到本实验最高值，但第 26 轮 raw Dice 更高时，gate 反而降低了 Dice，说明固定 `cls_threshold=0.3` 的收益只在部分 epoch 成立。
+
+![cls v2 raw vs gated segmentation](20260518_163818/report_assets/cls_v2_raw_vs_gated_segmentation.png)
+
+gate 净收益曲线展示 `val_gated_dice - val_raw_dice`。正值表示 gate 改善当前 epoch 的 Dice，负值表示 gate 造成额外损失。该曲线可以更直观看出 gate 的不稳定性：它能在局部阶段减少误检，但也会在后期加重漏检。
+
+![cls v2 gate delta](20260518_163818/report_assets/cls_v2_gate_delta.png)
+
+Precision/Recall 曲线用于判断分割输出的保守程度。gated precision 通常高于 raw precision，但 gated recall 下降更明显，这与报告结论一致：classification gate 抑制了一部分误检，同时带来了更多阳性漏检。
+
+![cls v2 precision recall](20260518_163818/report_assets/cls_v2_precision_recall.png)
+
+分类分支指标曲线显示训练集分类 recall 和 specificity 持续较高，但验证集 recall 后期下降。分类分支的泛化波动会直接影响 gate 决策，因此当前固定 gate 策略不能作为稳定提升 Dice 的依据。
+
+![cls v2 classification metrics](20260518_163818/report_assets/cls_v2_classification_metrics.png)

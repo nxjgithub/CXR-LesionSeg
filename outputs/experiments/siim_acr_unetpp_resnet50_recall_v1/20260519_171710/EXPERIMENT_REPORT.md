@@ -192,3 +192,25 @@ ResNet50 recall v1 与 ResNet34 recall v2 的差异比较清楚：ResNet50 能�
 2. 如果继续探索 ResNet50，重点不应只调阈值和连通域面积，而应改进误报抑制机制，例如引入更可靠的图像级分类筛选或更细致的困难阴性样本训练。
 3. 对 `threshold=0.02, min_component_area=0` 的高 Dice 阳性样本和高误报阴性样本做可视化复查，判断 ResNet50 提升来自真实病灶定位，还是更大范围激活导致的副作用。
 4. 后续模型选择仍应同时报告 positive-only Dice、negative FP rate 和 mean Dice all，不能只看全局像素级 Dice 或单独的 positive-only Dice。
+
+## 图表解读
+
+训练 loss 曲线用于观察收敛速度和验证集 loss 是否后期回升。
+
+![training loss clear](report_assets/training_loss_clear.png)
+
+Dice/IoU 曲线已统一为百分比，便于观察训练集与验证集之间的泛化差距。
+
+![training dice iou percent](report_assets/training_dice_iou_percent.png)
+
+Precision/Recall 曲线用于判断模型是偏保守还是偏召回。
+
+![training precision recall percent](report_assets/training_precision_recall_percent.png)
+
+阈值扫描曲线将 Dice、Precision 和 Recall 统一到百分比尺度下，辅助选择验证集阈值。
+
+![threshold sweep val clear](report_assets/threshold_sweep_val_clear.png)
+
+后处理 trade-off 图以阴性误报率为横轴、positive-only Dice 为纵轴，适合判断候选配置是否只是用误报换召回。
+
+![postprocess sweep val tradeoff clear](report_assets/postprocess_sweep_val_tradeoff_clear.png)

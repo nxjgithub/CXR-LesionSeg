@@ -30,6 +30,7 @@
 | `ensemble_unetpp_r34_r50_recall_v1` | Unet++ ResNet34 + ResNet50 ensemble | 当前验证集最佳候选 |
 | `ensemble_unetpp_r34_r50_deeplab_r34_v1` | 3 模型 ensemble：R34 + R50 + DeepLabV3+ R34 | 低误报融合候选 |
 | `ensemble_unetpp_r34_r50_deeplab_unet_v1` | 4 模型 ensemble：R34 + R50 + DeepLabV3+ R34 + SMP U-Net R34 | 更低误报融合候选 |
+| `enterprise_improve_v1` | 4 模型 focused sweep，固定 A/B/C 企业候选 | 企业落地候选配置选择 |
 
 ## 3. 实验演进脉络
 
@@ -56,6 +57,15 @@ U-Net baseline 阶段的价值是建立可复现训练流程和初始对照。�
 ### 3.3 SMP ResNet34 架构横向对比
 
 SMP 阶段引入 ImageNet 预训练 encoder，并比较 Unet++、DeepLabV3+ 和普通 U-Net decoder。
+
+下图补充了主要单模型的验证 Dice 训练曲线对比，用于观察不同架构在训练过程中的收敛和后期回落情况：
+
+![Single model val dice comparison](report_assets/single_model_val_dice_comparison.png)
+
+下图对比了主要 SMP/recall 模型的 threshold sweep，说明不同架构的最优阈值和 Dice 曲线形态并不完全一致：
+
+![Threshold sweep model comparison](report_assets/threshold_sweep_model_comparison.png)
+
 
 | 实验 | 训练期最佳 Val Dice | Threshold sweep 最佳 Dice | 后处理观察 |
 |---|---:|---:|---|
@@ -154,6 +164,29 @@ Recall-oriented 实验提高正样本采样比例和 BCE 正类权重，目标�
 2. 若更重视低误报，3 模型和 4 模型主可视化配置更有价值。
 3. 4 模型还有一个更均衡的验证集候选：`threshold=0.25, min_component_area=300`，positive Dice 为 0.4759，negative FP rate 为 12.12%，但该配置尚未生成同等可视化复查。
 
+### 3.8 Enterprise improve v1
+
+`enterprise_improve_v1` 对 2 模型与 4 模型融合继续做 focused sweep，并固定 3 个更适合应用取舍的 4 模型候选配置：
+
+| Candidate | 定位 | Threshold | Min component area | Positive Dice | Positive recall | Negative FP rate | Mean Dice all |
+|---|---|---:|---:|---:|---:|---:|---:|
+| A | enterprise balanced / recall-first | 0.25 | 200 | 0.4822 | 82.56% | 14.04% | 0.7754 |
+| B | low false-positive mode | 0.35 | 200 | 0.4509 | 77.31% | 9.89% | 0.8008 |
+| C | very low false-positive visual mode | 0.30 | 500 | 0.4255 | 69.12% | 7.78% | 0.8115 |
+
+相较 2 模型融合 main，Candidate A 明显提高 positive-only Dice 和阳性召回，但阴性误报率回升到 14.04%；Candidate B 同时高于 2 模型 main 的 positive-only Dice 和 positive recall，并将 negative FP rate 降到 9.89%；Candidate C 继续压低误报，但漏检增加。
+
+当前阶段建议将 Candidate B 作为企业平衡候选，将 Candidate A 保留为 recall-first 候选，将 Candidate C 保留为极低误报/可视化候选。
+
+下图将主要候选统一到百分比尺度下比较，便于直接观察 positive Dice、positive recall 和 negative FP rate 的取舍：
+
+![Main candidate metric comparison](report_assets/main_candidate_metric_comparison.png)
+
+下图展示 positive Dice 与阴性误报之间的 trade-off。Enterprise B 位于比 2 模型 main 更优的折中位置；Enterprise A 偏 recall-first；Candidate C 偏低误报。
+
+![Main candidate trade-off](report_assets/main_candidate_tradeoff_labeled.png)
+
+
 ## 4. 当前模型选择结论
 
 ### 4.1 推荐主线 baseline
@@ -212,6 +245,24 @@ outputs/experiments/ensemble_unetpp_r34_r50_deeplab_unet_v1
 
 推荐理由：4 模型融合主可视化配置将 negative FP rate 降至 7.78%，false positive negative 降至 129 / 1659，适合作为低误报场景候选。但其 positive-only Dice 为 0.4255，低于 2 模型融合主配置的 0.4365。
 
+当前企业平衡候选方案：
+
+```text
+outputs/experiments/enterprise_improve_v1
+```
+
+推荐配置为 Candidate B：
+
+| 参数 | 数值 |
+|---|---:|
+| Threshold | 0.35 |
+| Min component area | 200 |
+| Min pred area | 0 |
+| TTA | hflip |
+| Num models | 4 |
+
+推荐理由：Candidate B 的 positive-only Dice 为 0.4509，positive image recall 为 77.31%，negative FP rate 为 9.89%。相比 2 模型融合 main，它同时提高正样本 Dice、提高阳性召回并降低阴性误报，更适合作为当前企业版平衡候选。Candidate A 可作为 recall-first 候选，Candidate C 可作为极低误报候选。
+
 ### 4.2 暂不采用的实验
 
 | 实验 | 不采用原因 |
@@ -231,6 +282,7 @@ outputs/experiments/ensemble_unetpp_r34_r50_deeplab_unet_v1
 | `ensemble_unetpp_r34_r50_recall_v1` | 说明多模型融合可以改善单模型召回/误报折中 |
 | `ensemble_unetpp_r34_r50_deeplab_r34_v1` | 说明加入 DeepLabV3+ 后可以降低误报，但主可视化配置略降 positive Dice |
 | `ensemble_unetpp_r34_r50_deeplab_unet_v1` | 说明 4 模型融合可进一步降低误报，并提供一个高 positive Dice 的平衡候选 |
+| `enterprise_improve_v1` | 说明 4 模型 focused sweep 可以形成 A/B/C 三档企业候选 |
 
 ## 5. 当前主要问题
 
@@ -266,12 +318,13 @@ outputs/experiments/ensemble_unetpp_r34_r50_deeplab_unet_v1
 5. 加强胸片灰度、对比度、局部遮挡、尺度变化和轻微几何扰动相关的数据增强。
 6. 若继续探索 ResNet50，应引入更强的误报抑制机制，而不是只依赖更低阈值。
 7. 对 3 模型和 4 模型融合保留两类配置：低误报主可视化配置，以及 `negative_fp_rate <= 13%` 约束下的 balanced candidate。
-8. 若进入独立 test 集评估，应先固定候选配置，避免将 test 集结果用于再次调参。
+8. 对 `enterprise_improve_v1` 优先复查 Candidate B 的可视化结果，同时保留 Candidate A 和 Candidate C 作为 recall-first 与 very-low-FP 对照。
+9. 若进入独立 test 集评估，应先固定候选配置，避免将 test 集结果用于再次调参。
 
 ## 7. 当前阶段结论
 
 当前 SIIM-ACR 气胸分割实验已经完成从普通 U-Net baseline 到 SMP 系列模型、classification gate 和 recall-oriented 配置的多轮探索。
 
-综合验证集结果，`Unet++-ResNet34` 仍是当前最合适的单模型 baseline；`U-Net++ ResNet34 + ResNet50 ensemble` 是当前正样本 Dice 与误报平衡最清晰的候选方案。3 模型和 4 模型融合进一步证明加入横向架构可以降低阴性误报，其中 4 模型主可视化配置把 negative FP rate 降至 7.78%，但 positive-only Dice 和阳性图像召回略有下降。
+综合验证集结果，`Unet++-ResNet34` 仍是当前最合适的单模型 baseline；`U-Net++ ResNet34 + ResNet50 ensemble` 是早期正样本 Dice 与误报平衡较清晰的候选方案。3 模型和 4 模型融合进一步证明加入横向架构可以降低阴性误报，其中 4 模型主可视化配置把 negative FP rate 降至 7.78%，但 positive-only Dice 和阳性图像召回略有下降。`enterprise_improve_v1` 在 4 模型 focused sweep 上进一步形成 A/B/C 三档候选，其中 Candidate B 当前更适合作为企业平衡候选。
 
-后续应根据评估目标固定候选：若优先平衡正样本分割与误报，使用 2 模型融合主配置；若优先低误报，使用 4 模型融合主可视化配置；若希望继续提高 positive-only Dice，可复查 4 模型 `threshold=0.25, min_component_area=300` 的 balanced candidate。所有这些结论仍只来自验证集。
+后续应根据评估目标固定候选：若优先减少漏检，使用 Enterprise Candidate A；若优先企业平衡，使用 Enterprise Candidate B；若优先低误报展示或保守模式，使用 Enterprise Candidate C。所有这些结论仍只来自验证集。

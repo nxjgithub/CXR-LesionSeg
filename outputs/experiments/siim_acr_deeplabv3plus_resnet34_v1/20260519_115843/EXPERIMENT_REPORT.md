@@ -192,3 +192,25 @@ logs/postprocess_sweep_val.csv
 3. 若继续优化 DeepLabV3+，建议重点尝试更温和的后处理参数区间，避免 `min_component_area` 过大导致小病灶被删除。
 4. 对 DeepLabV3+ 的高误报阴性样本和低 Dice 阳性样本进行可视化回看，确认误差主要来自模型结构、阈值设置还是后处理策略。
 5. 后续主线实验优先围绕 U-Net++ 改进数据增强、损失函数和正样本召回能力。
+
+## 图表解读
+
+训练 loss 曲线用于观察收敛速度和验证集 loss 是否后期回升。
+
+![training loss clear](report_assets/training_loss_clear.png)
+
+Dice/IoU 曲线已统一为百分比，便于观察训练集与验证集之间的泛化差距。
+
+![training dice iou percent](report_assets/training_dice_iou_percent.png)
+
+Precision/Recall 曲线用于判断模型是偏保守还是偏召回。
+
+![training precision recall percent](report_assets/training_precision_recall_percent.png)
+
+阈值扫描曲线将 Dice、Precision 和 Recall 统一到百分比尺度下，辅助选择验证集阈值。
+
+![threshold sweep val clear](report_assets/threshold_sweep_val_clear.png)
+
+后处理 trade-off 图以阴性误报率为横轴、positive-only Dice 为纵轴，适合判断候选配置是否只是用误报换召回。
+
+![postprocess sweep val tradeoff clear](report_assets/postprocess_sweep_val_tradeoff_clear.png)

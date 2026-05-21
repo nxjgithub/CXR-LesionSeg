@@ -200,3 +200,25 @@ logs/postprocess_sweep_val.csv
 3. 若继续优化该模型，优先尝试更温和的 `min_component_area` 区间，避免强后处理删除小病灶。
 4. 对低阈值高正样本 Dice 配置下的阴性误报样本进行可视化回看，判断误报是否集中在肺尖、胸膜线或高对比边缘区域。
 5. 后续主线实验优先围绕 U-Net++ 改进损失函数、数据增强和困难阳性样本召回。
+
+## 图表解读
+
+训练 loss 曲线用于观察收敛速度和验证集 loss 是否后期回升。
+
+![training loss clear](report_assets/training_loss_clear.png)
+
+Dice/IoU 曲线已统一为百分比，便于观察训练集与验证集之间的泛化差距。
+
+![training dice iou percent](report_assets/training_dice_iou_percent.png)
+
+Precision/Recall 曲线用于判断模型是偏保守还是偏召回。
+
+![training precision recall percent](report_assets/training_precision_recall_percent.png)
+
+阈值扫描曲线将 Dice、Precision 和 Recall 统一到百分比尺度下，辅助选择验证集阈值。
+
+![threshold sweep val clear](report_assets/threshold_sweep_val_clear.png)
+
+后处理 trade-off 图以阴性误报率为横轴、positive-only Dice 为纵轴，适合判断候选配置是否只是用误报换召回。
+
+![postprocess sweep val tradeoff clear](report_assets/postprocess_sweep_val_tradeoff_clear.png)

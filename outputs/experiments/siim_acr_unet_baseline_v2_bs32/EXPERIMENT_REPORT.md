@@ -164,3 +164,21 @@ v2 是当前两个实验中验证集 Dice 更高的版本。类别不均衡处�
 - 在验证集错误分析和阈值选择固定后，再做独立 test 集评估。
 
 本报告只基于验证集日志生成，尚未包含独立 test 集评估。
+
+## 图表解读
+
+训练 loss 曲线用于观察收敛速度和验证集 loss 是否后期回升。
+
+![training loss clear](20260515_160529/report_assets/training_loss_clear.png)
+
+Dice/IoU 曲线已统一为百分比，便于观察训练集与验证集之间的泛化差距。
+
+![training dice iou percent](20260515_160529/report_assets/training_dice_iou_percent.png)
+
+Precision/Recall 曲线用于判断模型是偏保守还是偏召回。
+
+![training precision recall percent](20260515_160529/report_assets/training_precision_recall_percent.png)
+
+定性示例 contact sheet 汇总了典型高 Dice、低 Dice、误报和漏检样本，用于复查错误模式。
+
+![val predictions thr0p80 contact sheet](20260515_160529/report_assets/val_predictions_thr0p80_contact_sheet.jpg)

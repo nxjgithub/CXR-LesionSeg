@@ -205,3 +205,17 @@ true_negative
 3. 保留 low-FP 配置作为临床偏低误报场景的对照。
 4. 对 129 个 false negative positive 样本做集中可视化复查，确认仍漏检的阳性样本类型。
 5. 对 202 个 false positive negative 样本做误报来源分析，判断误报是否集中在肺尖、胸膜线、高对比边缘或图像伪影区域。
+
+## 图表解读
+
+后处理 trade-off 图以阴性误报率为横轴、positive-only Dice 为纵轴，适合判断候选配置是否只是用误报换召回。
+
+![ensemble postprocess sweep val tradeoff clear](report_assets/ensemble_postprocess_sweep_val_tradeoff_clear.png)
+
+定性示例 contact sheet 汇总了典型高 Dice、低 Dice、误报和漏检样本，用于复查错误模式。
+
+![val ensemble thr0p25 mincomp500 contact sheet](report_assets/val_ensemble_thr0p25_mincomp500_contact_sheet.jpg)
+
+定性示例 contact sheet 汇总了典型高 Dice、低 Dice、误报和漏检样本，用于复查错误模式。
+
+![val ensemble thr0p30 mincomp200 contact sheet](report_assets/val_ensemble_thr0p30_mincomp200_contact_sheet.jpg)

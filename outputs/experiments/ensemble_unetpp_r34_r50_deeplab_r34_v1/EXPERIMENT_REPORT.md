@@ -136,3 +136,13 @@ true_negative
 2. 将 `threshold=0.30, min_component_area=300` 作为更均衡的候选配置继续复查。
 3. 不应仅按 `mean_dice_all` 选择 `threshold=0.40, min_component_area=800`，因为该配置对阳性病灶分割过于保守。
 4. 若进入 test 集评估，应先在验证集上固定一个配置，不再根据 test 结果调参。
+
+## 图表解读
+
+后处理 trade-off 图以阴性误报率为横轴、positive-only Dice 为纵轴，适合判断候选配置是否只是用误报换召回。
+
+![ensemble postprocess sweep val tradeoff clear](report_assets/ensemble_postprocess_sweep_val_tradeoff_clear.png)
+
+定性示例 contact sheet 汇总了典型高 Dice、低 Dice、误报和漏检样本，用于复查错误模式。
+
+![val ensemble3 thr0p3 mincomp500 minpred0 contact sheet](report_assets/val_ensemble3_thr0p3_mincomp500_minpred0_contact_sheet.jpg)
