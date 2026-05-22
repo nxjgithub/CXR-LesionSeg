@@ -1,0 +1,28 @@
+# Current best 4-model ensemble candidates
+
+# Candidate A: enterprise balanced / recall-first
+threshold=0.25
+min_component_area=200
+min_pred_area=0
+tta=hflip
+mean_dice_positive=0.4822
+positive_image_recall=0.8256
+negative_fp_rate=0.1404
+
+# Candidate B: low false-positive mode
+threshold=0.35
+min_component_area=200
+min_pred_area=0
+tta=hflip
+mean_dice_positive=0.4509
+positive_image_recall=0.7731
+negative_fp_rate=0.0989
+
+# Candidate C: very low false-positive visual mode
+threshold=0.30
+min_component_area=500
+min_pred_area=0
+tta=hflip
+mean_dice_positive=0.4255
+positive_image_recall=0.6912
+negative_fp_rate=0.0778
