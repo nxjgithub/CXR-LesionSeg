@@ -32,6 +32,8 @@
 | `ensemble_unetpp_r34_r50_deeplab_unet_v1` | 4 模型 ensemble：R34 + R50 + DeepLabV3+ R34 + SMP U-Net R34 | 更低误报融合候选 |
 | `enterprise_improve_v1` | 4 模型 focused sweep，固定 A/B/C 企业候选 | 企业落地候选配置选择 |
 | `enterprise_unetpp_effb3_512_v2` | U-Net++ EfficientNet-B3 512 | 当前最强单模型企业候选 |
+| `enterprise_unetpp_seresnext50_512_v2` | U-Net++ SE-ResNeXt50 512 | 强 encoder 横向对照 |
+| `enterprise_deeplabv3plus_resnet50_512_v2` | DeepLabV3+ ResNet50 512 | DeepLabV3+ 横向架构对照 |
 
 ## 3. 实验演进脉络
 
@@ -216,6 +218,31 @@ Recall-oriented 实验提高正样本采样比例和 BCE 正类权重，目标�
 
 当前结论：`enterprise_unetpp_effb3_512_v2` 应更新为当前企业平衡与低误报的优先候选。`enterprise_improve_v1` Candidate A 仍保留为更高 positive-only Dice 的 recall-first 对照，因为其 positive-only Dice 为 0.4822，但阴性误报率也更高，为 14.04%。
 
+### 3.10 Enterprise 512 横向架构对照
+
+在 EfficientNet-B3 512 之后，继续评估了两组 512 输入尺寸的横向模型：`U-Net++ SE-ResNeXt50` 和 `DeepLabV3+ ResNet50`。两者使用相同的正样本采样比例 0.45，并采用 BCE/Dice=0.30/0.70、`pos_weight=2.0` 的企业候选配置。
+
+训练期和 threshold sweep 结果如下：
+
+| 实验 | 模型 | Best epoch | Val Dice | Threshold sweep 最佳 Dice | 最佳 threshold |
+|---|---|---:|---:|---:|---:|
+| `enterprise_unetpp_effb3_512_v2` | U-Net++ EfficientNet-B3 | 24 | 0.5583 | 0.5583 | 0.50 |
+| `enterprise_unetpp_seresnext50_512_v2` | U-Net++ SE-ResNeXt50 | 19 | 0.5411 | 0.5413 | 0.35 |
+| `enterprise_deeplabv3plus_resnet50_512_v2` | DeepLabV3+ ResNet50 | 18 | 0.5415 | 0.5426 | 0.30 |
+
+后处理约束下的关键结果如下：
+
+| 实验与配置 | Positive Dice | Negative FP rate | Mean Dice all | 结论 |
+|---|---:|---:|---:|---|
+| EfficientNet-B3 Candidate B：thr=0.04, area=500 | 0.4604 | 9.95% | 0.8024 | 当前企业平衡候选 |
+| EfficientNet-B3 Candidate C：thr=0.30, area=500 | 0.4464 | 7.96% | 0.8147 | 当前低误报候选 |
+| SE-ResNeXt50 FP<=14%：thr=0.02, area=150 | 0.4349 | 13.50% | 0.7691 | recall 取向对照，但弱于 EfficientNet-B3 |
+| SE-ResNeXt50 FP<=10%：thr=0.07, area=300 | 0.4178 | 9.95% | 0.7929 | 误报相近，positive Dice 明显偏低 |
+| DeepLabV3+ FP<=14%：thr=0.02, area=300 | 0.4270 | 13.92% | 0.7640 | 弱于 SE-ResNeXt50 和 EfficientNet-B3 |
+| DeepLabV3+ FP<=10%：thr=0.05, area=500 | 0.4059 | 9.70% | 0.7921 | 误报可控，但正样本不足 |
+
+结论：SE-ResNeXt50 512 和 DeepLabV3+ ResNet50 512 均没有超过 EfficientNet-B3 512。SE-ResNeXt50 略优于 DeepLabV3+，可以保留为强 encoder 横向对照或后续 ensemble 候选成员；DeepLabV3+ ResNet50 主要保留为架构对照，不建议作为当前企业候选。
+
 
 ## 4. 当前模型选择结论
 
@@ -338,6 +365,8 @@ outputs/experiments/enterprise_improve_v1
 | `ensemble_unetpp_r34_r50_deeplab_unet_v1` | 说明 4 模型融合可进一步降低误报，并提供一个高 positive Dice 的平衡候选 |
 | `enterprise_improve_v1` | 说明 4 模型 focused sweep 可以形成 A/B/C 三档企业候选；当前保留 Candidate A 作为 recall-first 对照 |
 | `enterprise_unetpp_effb3_512_v2` | 当前企业平衡和低误报优先候选，也可作为后续 ensemble 成员 |
+| `enterprise_unetpp_seresnext50_512_v2` | 说明更强 SE-ResNeXt encoder 未超过 EfficientNet-B3；可作为强 encoder 横向对照或 ensemble 成员候选 |
+| `enterprise_deeplabv3plus_resnet50_512_v2` | 说明 DeepLabV3+ ResNet50 512 在误报约束下 positive Dice 不足，保留为架构对照 |
 
 ## 5. 当前主要问题
 
@@ -374,7 +403,8 @@ outputs/experiments/enterprise_improve_v1
 6. 若继续探索 ResNet50，应引入更强的误报抑制机制，而不是只依赖更低阈值。
 7. 对 3 模型和 4 模型融合保留两类配置：低误报主可视化配置，以及 `negative_fp_rate <= 13%` 约束下的 balanced candidate。
 8. 对 `enterprise_unetpp_effb3_512_v2` 优先复查 Candidate B 和 Candidate C 的可视化结果，同时保留 `enterprise_improve_v1` Candidate A 作为 recall-first 对照。
-9. 若进入独立 test 集评估，应先固定候选配置，避免将 test 集结果用于再次调参。
+9. 若继续做 ensemble，可优先评估 EfficientNet-B3 与 SE-ResNeXt50 是否存在互补错误模式；DeepLabV3+ ResNet50 暂不作为优先 ensemble 成员。
+10. 若进入独立 test 集评估，应先固定候选配置，避免将 test 集结果用于再次调参。
 
 ## 7. 当前阶段结论
 
@@ -382,4 +412,4 @@ outputs/experiments/enterprise_improve_v1
 
 综合验证集结果，`Unet++-ResNet34` 仍可作为早期单模型 baseline；`U-Net++ ResNet34 + ResNet50 ensemble` 是早期正样本 Dice 与误报平衡较清晰的融合候选方案。3 模型和 4 模型融合进一步证明加入横向架构可以降低阴性误报。`enterprise_improve_v1` 在 4 模型 focused sweep 上形成 A/B/C 三档候选，其中 Candidate A 仍适合作为 recall-first 对照。
 
-最新的 `enterprise_unetpp_effb3_512_v2` 显示 EfficientNet-B3 512 单模型已经能在企业平衡和低误报配置上超过旧 4 模型候选。后续应根据评估目标固定候选：若优先减少漏检，继续保留 `enterprise_improve_v1` Candidate A 或 EfficientNet-B3 Candidate A；若优先企业平衡，使用 EfficientNet-B3 Candidate B；若优先低误报展示或保守模式，使用 EfficientNet-B3 Candidate C。所有这些结论仍只来自验证集。
+最新的 `enterprise_unetpp_effb3_512_v2` 显示 EfficientNet-B3 512 单模型已经能在企业平衡和低误报配置上超过旧 4 模型候选。后续新增的 SE-ResNeXt50 512 和 DeepLabV3+ ResNet50 512 均没有超过 EfficientNet-B3，其中 SE-ResNeXt50 可作为强 encoder 对照，DeepLabV3+ 主要作为架构对照。后续应根据评估目标固定候选：若优先减少漏检，继续保留 `enterprise_improve_v1` Candidate A 或 EfficientNet-B3 Candidate A；若优先企业平衡，使用 EfficientNet-B3 Candidate B；若优先低误报展示或保守模式，使用 EfficientNet-B3 Candidate C。所有这些结论仍只来自验证集。

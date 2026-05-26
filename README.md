@@ -29,6 +29,7 @@
 - 面向 SMP 模型的 threshold sweep、postprocess sweep 和验证集预测可视化工具。
 - 多轮 SMP 架构、recall-oriented、ensemble 和 enterprise 候选实验记录。
 - 当前企业候选更新到 `U-Net++ EfficientNet-B3 512 v2`，并保留 recall-first、balanced、low-FP 三档后处理配置。
+- 新增 `U-Net++ SE-ResNeXt50 512 v2` 和 `DeepLabV3+ ResNet50 512 v2` 企业横向架构对照。
 
 已有实验报告位于：
 
@@ -38,6 +39,8 @@
 - `outputs/experiments/siim_acr_unet_cls_v2/EXPERIMENT_REPORT.md`
 - `outputs/experiments/siim_acr_unetpp_resnet34_v1/20260518_180917/EXPERIMENT_REPORT.md`
 - `outputs/experiments/enterprise_unetpp_effb3_512_v2/20260525_090041/EXPERIMENT_REPORT.md`
+- `outputs/experiments/enterprise_unetpp_seresnext50_512_v2/20260525_125544/EXPERIMENT_REPORT.md`
+- `outputs/experiments/enterprise_deeplabv3plus_resnet50_512_v2/20260525_171830/EXPERIMENT_REPORT.md`
 
 当前 SIIM-ACR U-Net 系列实验结果概览：
 
@@ -49,6 +52,8 @@
 | `siim_acr_unet_cls_v2` | U-Net + classification head，cls gate | 0.4120 | 分类门控在部分 epoch 能提高 gated Dice，但整体低于 v3 baseline，简单分类辅助头未能稳定提升分割性能。 |
 | `siim_acr_unetpp_resnet34_v1` | Unet++-ResNet34，ImageNet encoder，balanced sampling、`pos_weight=2.0`、BCE/Dice=0.3/0.7 | 0.5146 | SMP Unet++ 明显高于 U-Net baseline；threshold sweep 最佳 Dice 为 0.5198。训练后期过拟合，后处理可降低阴性假阳性，但会牺牲部分阳性 Dice。 |
 | `enterprise_unetpp_effb3_512_v2` | Unet++-EfficientNet-B3，ImageNet encoder，balanced sampling、`pos_weight=3.0`、BCE/Dice=0.2/0.8 | 0.5583 | 当前最强单模型企业候选；后处理 Candidate B 为 threshold=0.04、area=500，positive Dice 0.4604、negative FP rate 9.95%、mean Dice all 0.8024。 |
+| `enterprise_unetpp_seresnext50_512_v2` | Unet++-SE-ResNeXt50，ImageNet encoder，balanced sampling、`pos_weight=2.0`、BCE/Dice=0.3/0.7 | 0.5411 | 强 encoder 横向对照；误报约束后 positive Dice 低于 EfficientNet-B3，不替换当前企业候选。 |
+| `enterprise_deeplabv3plus_resnet50_512_v2` | DeepLabV3+-ResNet50，ImageNet encoder，balanced sampling、`pos_weight=2.0`、BCE/Dice=0.3/0.7 | 0.5415 | DeepLabV3+ 横向架构对照；接近 10% 阴性误报约束下 positive Dice 只有 0.4059，暂不作为主候选。 |
 
 ## 项目结构
 
