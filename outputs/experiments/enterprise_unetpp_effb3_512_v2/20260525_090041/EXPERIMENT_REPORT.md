@@ -177,3 +177,25 @@ EfficientNet-B3 512 单模型的优势非常明确：在接近 10% 阴性误报�
 3. 对 `threshold=0.04, area=300/500` 的漏检样本做单独清单，重点检查小气胸、边缘细长区域和低对比度样本。
 4. 若继续训练 EfficientNet 系列，可尝试 early stopping、保存多 checkpoint 并按后处理综合指标选点，而不只按全局 Val Dice 选点。
 5. 进入独立 test 集评估前，应固定 Candidate B/C 的阈值和面积过滤，避免用 test 集继续调参。
+
+## 图表解读
+
+训练 loss 曲线用于观察收敛速度和验证集 loss 是否后期回升。
+
+![training loss clear](report_assets/training_loss_clear.png)
+
+Dice/IoU 曲线已统一为百分比，便于观察训练集与验证集之间的泛化差距。
+
+![training dice iou percent](report_assets/training_dice_iou_percent.png)
+
+Precision/Recall 曲线用于判断模型后期是否变得更保守。
+
+![training precision recall percent](report_assets/training_precision_recall_percent.png)
+
+阈值扫描曲线将 Dice、Precision 和 Recall 统一到百分比尺度下，辅助选择验证集阈值。
+
+![threshold sweep val clear](report_assets/threshold_sweep_val_clear.png)
+
+后处理 trade-off 图以阴性误报率为横轴、positive-only Dice 为纵轴，颜色表示 mean Dice all，适合判断候选配置是否只是用误报换取正样本 Dice。
+
+![postprocess sweep val tradeoff clear](report_assets/postprocess_sweep_val_tradeoff_clear.png)
