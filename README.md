@@ -27,6 +27,8 @@
 - 一组 U-Net + classification head 辅助分类实验记录。
 - 基于 `segmentation_models_pytorch` 的 Unet++-ResNet34 实验记录。
 - 面向 SMP 模型的 threshold sweep、postprocess sweep 和验证集预测可视化工具。
+- 多轮 SMP 架构、recall-oriented、ensemble 和 enterprise 候选实验记录。
+- 当前企业候选更新到 `U-Net++ EfficientNet-B3 512 v2`，并保留 recall-first、balanced、low-FP 三档后处理配置。
 
 已有实验报告位于：
 
@@ -35,6 +37,7 @@
 - `outputs/experiments/siim_acr_unet_baseline_v3/EXPERIMENT_REPORT.md`
 - `outputs/experiments/siim_acr_unet_cls_v2/EXPERIMENT_REPORT.md`
 - `outputs/experiments/siim_acr_unetpp_resnet34_v1/20260518_180917/EXPERIMENT_REPORT.md`
+- `outputs/experiments/enterprise_unetpp_effb3_512_v2/20260525_090041/EXPERIMENT_REPORT.md`
 
 当前 SIIM-ACR U-Net 系列实验结果概览：
 
@@ -45,6 +48,7 @@
 | `siim_acr_unet_baseline_v3` | 降低正样本采样比例、`pos_weight=2.0`、BCE/Dice=0.3/0.7 | 0.4289 | 训练过程相比 v2 更稳定，过拟合有所缓解，但验证 Dice 提升有限，普通 U-Net 瓶颈仍未明显突破。 |
 | `siim_acr_unet_cls_v2` | U-Net + classification head，cls gate | 0.4120 | 分类门控在部分 epoch 能提高 gated Dice，但整体低于 v3 baseline，简单分类辅助头未能稳定提升分割性能。 |
 | `siim_acr_unetpp_resnet34_v1` | Unet++-ResNet34，ImageNet encoder，balanced sampling、`pos_weight=2.0`、BCE/Dice=0.3/0.7 | 0.5146 | SMP Unet++ 明显高于 U-Net baseline；threshold sweep 最佳 Dice 为 0.5198。训练后期过拟合，后处理可降低阴性假阳性，但会牺牲部分阳性 Dice。 |
+| `enterprise_unetpp_effb3_512_v2` | Unet++-EfficientNet-B3，ImageNet encoder，balanced sampling、`pos_weight=3.0`、BCE/Dice=0.2/0.8 | 0.5583 | 当前最强单模型企业候选；后处理 Candidate B 为 threshold=0.04、area=500，positive Dice 0.4604、negative FP rate 9.95%、mean Dice all 0.8024。 |
 
 ## 项目结构
 
