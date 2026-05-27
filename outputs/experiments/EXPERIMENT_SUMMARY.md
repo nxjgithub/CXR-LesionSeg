@@ -33,6 +33,7 @@
 | `enterprise_improve_v1` | 4 模型 focused sweep，固定 A/B/C 企业候选 | 企业落地候选配置选择 |
 | `enterprise_unetpp_effb3_512_v2` | U-Net++ EfficientNet-B3 512 | 当前最强单模型企业候选 |
 | `enterprise_unetpp_effb3_512_bce_dice_stable_a100_bs48` | U-Net++ EfficientNet-B3 512 + 稳定 BCE/Dice + BS48 | 新企业平衡候选 |
+| `enterprise_unetpp_effb3_512_bce_tversky_a100_safe` | U-Net++ EfficientNet-B3 512 + BCE/Tversky | 企业平衡并列候选，低误报对照 |
 | `enterprise_unetpp_seresnext50_512_v2` | U-Net++ SE-ResNeXt50 512 | 强 encoder 横向对照 |
 | `enterprise_deeplabv3plus_resnet50_512_v2` | DeepLabV3+ ResNet50 512 | DeepLabV3+ 横向架构对照 |
 
@@ -270,6 +271,42 @@ Recall-oriented 实验提高正样本采样比例和 BCE 正类权重，目标�
 
 与 `enterprise_unetpp_effb3_512_v2` 相比，该实验没有全面胜出：recall-first 和 low-FP 两端仍由旧 v2 略优。但在接近 10% 阴性误报约束下，Stable BS48 Candidate B 将 positive-only Dice 从 0.4604 提升到 0.4632，同时 negative FP rate 从 9.95% 小幅降到 9.89%，可作为新的企业平衡候选。
 
+### 3.12 Enterprise EfficientNet-B3 512 BCE/Tversky
+
+`enterprise_unetpp_effb3_512_bce_tversky_a100_safe` 继续使用 `U-Net++ + timm-efficientnet-b3` 和 512 输入尺寸，将损失函数改为 BCE + Tversky。配置中 `bce_weight=0.35`、`tversky_weight=0.65`、`pos_weight=2.0`、`tversky_alpha=0.5`、`tversky_beta=0.5`，正样本采样比例为 0.40。
+
+训练日志实际记录 33 个 epoch，默认阈值下最佳验证 Dice 出现在第 21 轮：
+
+| 指标 | 数值 |
+|---|---:|
+| Best epoch | 21 |
+| Val Dice | 0.5661 |
+| Val IoU | 0.3948 |
+| Val Precision | 0.6239 |
+| Val Recall | 0.5180 |
+| Val positive-only Dice | 0.4712 |
+| Val negative FP rate | 24.53% |
+
+Threshold sweep 中，按全局像素级 Dice 最优的阈值为 0.45：
+
+| Threshold | Pixel Dice | Positive Dice | Negative FP rate | Mean Dice all |
+|---:|---:|---:|---:|---:|
+| 0.45 | 0.5661 | 0.4724 | 25.32% | 0.6856 |
+| 0.50 | 0.5661 | 0.4714 | 24.41% | 0.6924 |
+| 0.70 | 0.5657 | 0.4670 | 21.52% | 0.7140 |
+
+新增的 `postprocess_sweep_val_best_model_fast.csv` 和 `postprocess_sweep_val_best_positive_model_fast.csv` 修复了旧后处理文件中阴性误报统计全为 100% 的问题。基于 `best_model_fast`，该实验形成三档后处理候选：
+
+| Candidate | 定位 | Threshold | Min component area | Min pred area | Positive Dice | Positive recall | Negative FP rate | Mean Dice all |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| A | recall-first | 0.04 | 200 | 0 | 0.4798 | 84.87% | 13.92% | 0.7758 |
+| B | enterprise balanced | 0.25 | 300 | 20 | 0.4641 | 81.30% | 9.95% | 0.8032 |
+| C | low false-positive | 0.25 | 500 | 200 | 0.4425 | 75.63% | 7.72% | 0.8157 |
+
+`best_positive_model_fast` 虽然最高 positive-only Dice 达到 0.5312，但对应 negative FP rate 为 61.60%；在 FP<=10% 约束下 positive-only Dice 只有 0.3634，因此不作为企业候选 checkpoint。
+
+当前结论：BCE/Tversky Candidate B 在接近 10% 阴性误报约束下与 Stable BS48 Candidate B 基本持平，并略高 positive-only Dice，可纳入企业平衡并列候选；Candidate A 可作为 recall-first 对照；Candidate C 作为低误报对照，但低误报默认候选仍优先保留 EfficientNet-B3 v2 Candidate C。
+
 
 ## 4. 当前模型选择结论
 
@@ -346,6 +383,25 @@ outputs/experiments/enterprise_unetpp_effb3_512_bce_dice_stable_a100_bs48/202605
 
 推荐理由：Stable BS48 Candidate B 的 threshold 为 0.03，positive-only Dice 为 0.4632，negative FP rate 为 9.89%，mean Dice all 为 0.8035。相比 `enterprise_unetpp_effb3_512_v2` Candidate B，它在接近 10% 阴性误报率下小幅提高 positive-only Dice 和 mean Dice all，且仍为单模型配置，部署复杂度低于 4 模型融合。
 
+企业平衡并列候选方案：
+
+```text
+outputs/experiments/enterprise_unetpp_effb3_512_bce_tversky_a100_safe/20260527_011444
+```
+
+推荐配置为 Candidate B：
+
+| 参数 | 数值 |
+|---|---:|
+| Checkpoint | best_model |
+| Threshold | 0.25 |
+| Min component area | 300 |
+| Min pred area | 20 |
+| Keep largest component | False |
+| Num models | 1 |
+
+推荐理由：BCE/Tversky Candidate B 的 positive-only Dice 为 0.4641，negative FP rate 为 9.95%，mean Dice all 为 0.8032。它与 Stable BS48 Candidate B 几乎持平，positive-only Dice 略高但误报也略高，建议作为企业平衡并列候选，后续通过可视化和 test 前固定策略再二选一。
+
 当前低误报候选方案：
 
 ```text
@@ -393,6 +449,7 @@ outputs/experiments/enterprise_improve_v1
 | `enterprise_improve_v1` | 说明 4 模型 focused sweep 可以形成 A/B/C 三档企业候选；当前保留 Candidate A 作为 recall-first 对照 |
 | `enterprise_unetpp_effb3_512_v2` | 当前低误报优先候选，也可作为后续 ensemble 成员 |
 | `enterprise_unetpp_effb3_512_bce_dice_stable_a100_bs48` | 在接近 10% 阴性误报约束下略优于 EfficientNet-B3 512 v2，可作为新的企业平衡候选 |
+| `enterprise_unetpp_effb3_512_bce_tversky_a100_safe` | 修正后处理后，在接近 10% 阴性误报约束下与 Stable BS48 基本持平；可作为企业平衡并列候选 |
 | `enterprise_unetpp_seresnext50_512_v2` | 说明更强 SE-ResNeXt encoder 未超过 EfficientNet-B3；可作为强 encoder 横向对照或 ensemble 成员候选 |
 | `enterprise_deeplabv3plus_resnet50_512_v2` | 说明 DeepLabV3+ ResNet50 512 在误报约束下 positive Dice 不足，保留为架构对照 |
 
@@ -431,8 +488,9 @@ outputs/experiments/enterprise_improve_v1
 6. 若继续探索 ResNet50，应引入更强的误报抑制机制，而不是只依赖更低阈值。
 7. 对 3 模型和 4 模型融合保留两类配置：低误报主可视化配置，以及 `negative_fp_rate <= 13%` 约束下的 balanced candidate。
 8. 对 `enterprise_unetpp_effb3_512_bce_dice_stable_a100_bs48` Candidate B 和 `enterprise_unetpp_effb3_512_v2` Candidate C 优先生成可视化复查，同时保留 `enterprise_improve_v1` Candidate A 作为 recall-first 对照。
-9. 若继续做 ensemble，可优先评估 EfficientNet-B3 与 SE-ResNeXt50 是否存在互补错误模式；DeepLabV3+ ResNet50 暂不作为优先 ensemble 成员。
-10. 若进入独立 test 集评估，应先固定候选配置，避免将 test 集结果用于再次调参。
+9. 对 BCE/Tversky Candidate B 与 Stable BS48 Candidate B 做同批可视化复查，重点比较误报形态、漏检样本和小病灶分割质量。
+10. 若继续做 ensemble，可优先评估 EfficientNet-B3 与 SE-ResNeXt50 是否存在互补错误模式；DeepLabV3+ ResNet50 暂不作为优先 ensemble 成员。
+11. 若进入独立 test 集评估，应先固定候选配置，避免将 test 集结果用于再次调参。
 
 ## 7. 当前阶段结论
 
@@ -440,4 +498,4 @@ outputs/experiments/enterprise_improve_v1
 
 综合验证集结果，`Unet++-ResNet34` 仍可作为早期单模型 baseline；`U-Net++ ResNet34 + ResNet50 ensemble` 是早期正样本 Dice 与误报平衡较清晰的融合候选方案。3 模型和 4 模型融合进一步证明加入横向架构可以降低阴性误报。`enterprise_improve_v1` 在 4 模型 focused sweep 上形成 A/B/C 三档候选，其中 Candidate A 仍适合作为 recall-first 对照。
 
-`enterprise_unetpp_effb3_512_v2` 显示 EfficientNet-B3 512 单模型已经能在企业平衡和低误报配置上超过旧 4 模型候选。后续新增的 SE-ResNeXt50 512 和 DeepLabV3+ ResNet50 512 均没有超过 EfficientNet-B3，其中 SE-ResNeXt50 可作为强 encoder 对照，DeepLabV3+ 主要作为架构对照。最新的 Stable BS48 BCE/Dice 配置在 10% 阴性误报约束下小幅超过 EfficientNet-B3 512 v2，可更新为企业平衡候选。后续应根据评估目标固定候选：若优先减少漏检，继续保留 `enterprise_improve_v1` Candidate A 或 EfficientNet-B3 v2 Candidate A；若优先企业平衡，使用 Stable BS48 Candidate B；若优先低误报展示或保守模式，使用 EfficientNet-B3 v2 Candidate C。所有这些结论仍只来自验证集。
+`enterprise_unetpp_effb3_512_v2` 显示 EfficientNet-B3 512 单模型已经能在企业平衡和低误报配置上超过旧 4 模型候选。后续新增的 SE-ResNeXt50 512 和 DeepLabV3+ ResNet50 512 均没有超过 EfficientNet-B3，其中 SE-ResNeXt50 可作为强 encoder 对照，DeepLabV3+ 主要作为架构对照。最新的 Stable BS48 BCE/Dice 配置在 10% 阴性误报约束下小幅超过 EfficientNet-B3 512 v2，可更新为企业平衡候选。BCE/Tversky 配置取得更高像素级 Val Dice，修正后处理后 Candidate B 在接近 10% 阴性误报约束下与 Stable BS48 Candidate B 基本持平，可作为企业平衡并列候选。后续应根据评估目标固定候选：若优先减少漏检，继续保留 `enterprise_improve_v1` Candidate A、EfficientNet-B3 v2 Candidate A 或 BCE/Tversky Candidate A；若优先企业平衡，比较 Stable BS48 Candidate B 与 BCE/Tversky Candidate B；若优先低误报展示或保守模式，使用 EfficientNet-B3 v2 Candidate C。所有这些结论仍只来自验证集。
