@@ -74,6 +74,8 @@ outputs/**/*.pth
 outputs/**/*.pt
 outputs/**/*.ckpt
 outputs/experiments/siim_acr_unet_baseline_v2_bs32/20260515_160529/visualizations
+outputs/experiments/enterprise_unetpp_effb3_512_scse_aug_a100_safe/20260526_155945/kaggle_submission/
+outputs/submissions/
 
 # Logs and temporary runtime files
 *.log
